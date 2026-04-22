@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: module20-prescription
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
