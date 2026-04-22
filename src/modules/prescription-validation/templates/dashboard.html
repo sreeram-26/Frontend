@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Module 20 — Prescription Validation & Consistency System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#0a0e17;--surface:#111827;--surface2:#1a2235;--border:#1e2d45;--accent:#00d4aa;--accent2:#0095ff;--danger:#ff4757;--warning:#ffa502;--success:#2ed573;--text:#e2e8f0;--muted:#64748b;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+.header{background:linear-gradient(135deg,#0a1628 0%,#0d1f3c 100%);border-bottom:1px solid var(--border);padding:0 2rem;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;height:60px;}
+.header-left{display:flex;align-items:center;gap:1rem;}
+.logo{width:32px;height:32px;background:var(--accent);border-radius:6px;display:grid;place-items:center;font-weight:700;color:#000;font-size:14px;}
+.header-title{font-size:15px;font-weight:600;}
+.header-sub{font-size:11px;color:var(--muted);font-family:var(--mono);}
+.badge{background:#1a2d1f;border:1px solid var(--success);color:var(--success);font-size:10px;padding:2px 8px;border-radius:20px;font-family:var(--mono);}
+.audit-btn{background:var(--accent);color:#000;border:none;padding:8px 18px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;transition:all 0.2s;font-family:var(--sans);}
+.audit-btn:hover{background:#00f0c0;}
+.audit-btn.running{background:#ffa502;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+.container{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 60px);}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:1.5rem 0;}
+.nav-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;padding:0 1.2rem;margin-bottom:0.5rem;font-family:var(--mono);}
+.nav-section{margin-bottom:1.5rem;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.2rem;font-size:13px;cursor:pointer;transition:all 0.15s;color:var(--muted);border-left:2px solid transparent;}
+.nav-item:hover{color:var(--text);background:var(--surface2);}
+.nav-item.active{color:var(--accent);background:rgba(0,212,170,0.07);border-left-color:var(--accent);}
+.main{padding:1.5rem;overflow:auto;}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.2rem;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-card.green::before{background:var(--success);}
+.stat-card.blue::before{background:var(--accent2);}
+.stat-card.red::before{background:var(--danger);}
+.stat-card.yellow::before{background:var(--warning);}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;}
+.stat-value{font-size:28px;font-weight:600;font-family:var(--mono);}
+.stat-value.green{color:var(--success);}
+.stat-value.blue{color:var(--accent2);}
+.stat-value.red{color:var(--danger);}
+.stat-value.yellow{color:var(--warning);}
+.section{display:none;}
+.section.active{display:block;}
+.section-title{font-size:16px;font-weight:600;margin-bottom:1rem;}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1.5rem;}
+.table-header{padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.table-header-title{font-size:13px;font-weight:600;}
+.table-count{font-size:11px;color:var(--muted);font-family:var(--mono);}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+.tbl th{padding:10px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:500;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);}
+.tbl td{padding:10px 12px;border-bottom:1px solid rgba(30,45,69,0.5);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:rgba(255,255,255,0.02);}
+.pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:600;font-family:var(--mono);}
+.pill-green{background:rgba(46,213,115,0.12);color:var(--success);border:1px solid rgba(46,213,115,0.25);}
+.pill-red{background:rgba(255,71,87,0.12);color:var(--danger);border:1px solid rgba(255,71,87,0.25);}
+.pill-yellow{background:rgba(255,165,2,0.12);color:var(--warning);border:1px solid rgba(255,165,2,0.25);}
+.pill-blue{background:rgba(0,149,255,0.12);color:var(--accent2);border:1px solid rgba(0,149,255,0.25);}
+.pill-teal{background:rgba(0,212,170,0.12);color:var(--accent);border:1px solid rgba(0,212,170,0.25);}
+.score-bar-wrap{display:flex;align-items:center;gap:8px;}
+.score-bar{height:6px;background:var(--border);border-radius:3px;flex:1;overflow:hidden;}
+.score-bar-fill{height:100%;border-radius:3px;}
+.score-num{font-family:var(--mono);font-size:12px;min-width:38px;text-align:right;}
+.query-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;}
+.query-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.query-card-header{padding:0.8rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.query-name{font-size:12px;font-weight:600;}
+.query-type{font-size:10px;font-family:var(--mono);}
+.query-body{padding:0.8rem 1rem;}
+.query-code{background:#060c18;border:1px solid var(--border);border-radius:6px;padding:0.8rem;font-family:var(--mono);font-size:11px;color:#7dd3fc;white-space:pre-wrap;word-break:break-all;line-height:1.6;margin-bottom:0.6rem;}
+.query-result{font-size:11px;color:var(--muted);}
+.query-result strong{color:var(--accent);}
+.trigger-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:1rem;}
+.trigger-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:0.5rem;}
+.trigger-code{background:#060c18;border:1px solid var(--border);border-radius:6px;padding:0.8rem;font-family:var(--mono);font-size:11px;color:#a5f3fc;white-space:pre-wrap;line-height:1.6;}
+.er-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem;}
+.er-entity{background:var(--surface);border:2px solid var(--accent2);border-radius:8px;overflow:hidden;}
+.er-entity-name{background:var(--accent2);color:#000;padding:6px 12px;font-weight:700;font-size:12px;}
+.er-attrs{padding:8px 12px;}
+.er-attr{font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);font-family:var(--mono);color:var(--muted);}
+.er-attr:last-child{border-bottom:none;}
+.er-attr.pk{color:var(--warning);}
+.loading{text-align:center;padding:2rem;color:var(--muted);font-family:var(--mono);font-size:12px;}
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--surface2);border:1px solid var(--success);color:var(--success);padding:12px 20px;border-radius:8px;font-size:13px;z-index:999;transform:translateY(100px);transition:transform 0.3s;font-family:var(--mono);}
+.toast.show{transform:translateY(0);}
+.toast.error{border-color:var(--danger);color:var(--danger);}
+.violation-item{background:var(--surface);border-left:3px solid var(--danger);border-radius:0 8px 8px 0;padding:0.8rem 1rem;margin-bottom:0.6rem;border:1px solid var(--border);border-left:3px solid var(--danger);}
+.violation-item.MEDIUM{border-left-color:var(--warning);}
+.violation-item.LOW{border-left-color:var(--muted);}
+.v-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.v-type{font-size:11px;font-family:var(--mono);font-weight:600;}
+.v-detail{font-size:12px;color:var(--muted);}
+.v-meta{font-size:11px;color:var(--muted);margin-top:4px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="header-left">
+    <div class="logo">Rx</div>
+    <div>
+      <div class="header-title">Prescription Validation &amp; Consistency System</div>
+      <div class="header-sub">Module 20 · Drug Safety Systems · IIT(ISM) DBMS Project</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="badge">● SYSTEM ONLINE</span>
+    <button class="audit-btn" id="audit-btn" onclick="runAudit()">&#9654; Run Full Audit</button>
+  </div>
+</header>
+<div class="container">
+  <nav class="sidebar">
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" onclick="showSection('overview',this)">&#11041; Dashboard</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Data</div>
+      <div class="nav-item" onclick="showSection('prescriptions',this)">&#128203; Prescriptions</div>
+      <div class="nav-item" onclick="showSection('drugs',this)">&#128138; Drug Master</div>
+      <div class="nav-item" onclick="showSection('guidelines',this)">&#128218; Guidelines</div>
+      <div class="nav-item" onclick="showSection('substitutions',this)">&#8635; Substitutions</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Audit</div>
+      <div class="nav-item" onclick="showSection('violations',this)">&#9888; Violations</div>
+      <div class="nav-item" onclick="showSection('compliance',this)">&#10003; Compliance</div>
+      <div class="nav-item" onclick="showSection('auditlogs',this)">&#128220; Audit Logs</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">DBMS</div>
+      <div class="nav-item" onclick="showSection('queries',this)">&gt;_ Queries</div>
+      <div class="nav-item" onclick="showSection('triggers',this)">&#9889; Triggers &amp; Procedures</div>
+      <div class="nav-item" onclick="showSection('schema',this)">&#11041; Schema / ER</div>
+    </div>
+  </nav>
+  <main class="main">
+    <div class="section active" id="sec-overview">
+      <div class="stats-grid">
+        <div class="stat-card blue"><div class="stat-label">Total Prescriptions</div><div class="stat-value blue" id="s-total">-</div></div>
+        <div class="stat-card green"><div class="stat-label">Avg Compliance Score</div><div class="stat-value green" id="s-avg">-</div></div>
+        <div class="stat-card red"><div class="stat-label">Total Violations</div><div class="stat-value red" id="s-viol">-</div></div>
+        <div class="stat-card yellow"><div class="stat-label">Flagged Prescriptions</div><div class="stat-value yellow" id="s-flagged">-</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-header-title">Doctor Compliance Scores</span><span class="table-count" id="doc-count"></span></div>
+        <table class="tbl"><thead><tr><th>Doctor</th><th>Avg Score</th><th>Prescriptions</th><th>Violations</th><th>Rating</th></tr></thead>
+        <tbody id="doctor-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table>
+      </div>
+      <div class="two-col">
+        <div class="table-wrap">
+          <div class="table-header"><span class="table-header-title">Violations by Type</span></div>
+          <table class="tbl"><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody id="viol-type-table"><tr><td colspan="2" class="loading">Loading...</td></tr></tbody></table>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><span class="table-header-title">Violations by Severity</span></div>
+          <table class="tbl"><thead><tr><th>Severity</th><th>Count</th></tr></thead><tbody id="viol-sev-table"><tr><td colspan="2" class="loading">Loading...</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="section" id="sec-prescriptions">
+      <div class="section-title">Prescriptions</div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-header-title">Prescription Records</span><span class="table-count" id="rx-count"></span></div>
+        <table class="tbl"><thead><tr><th>Rx ID</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Items</th><th>Status</th><th>Last Audited</th></tr></thead>
+        <tbody id="rx-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="section" id="sec-drugs">
+      <div class="section-title">Drug Master</div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-header-title">Registered Drugs</span><span class="table-count" id="drug-count"></span></div>
+        <table class="tbl"><thead><tr><th>Drug ID</th><th>Name</th><th>Max Dose</th><th>Allowed Routes</th><th>Frequencies</th><th>Max Duration</th></tr></thead>
+        <tbody id="drug-table"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="section" id="sec-guidelines">
+      <div class="section-title">Clinical Guidelines</div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-header-title">Active Guidelines</span></div>
+        <table class="tbl"><thead><tr><th>Guideline ID</th><th>Source</th><th>Drug ID</th><th>Rule</th><th>Version</th></tr></thead>
+        <tbody id="guideline-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="section" id="sec-substitutions">
+      <div class="section-title">Therapeutic Substitutions</div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-header-title">Substitution Registry</span></div>
+        <table class="tbl"><thead><tr><th>ID</th><th>Original Drug</th><th>Substitute</th><th>Reason</th></tr></thead>
+        <tbody id="sub-table"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="section" id="sec-violations">
+      <div class="section-title">Violations</div>
+      <div id="violations-list"><div class="loading">Loading...</div></div>
+    </div>
+    <div class="section" id="sec-compliance">
+      <div class="section-title">Compliance Reports</div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-header-title">Compliance Report Table</span><span class="table-count" id="comp-count"></span></div>
+        <table class="tbl"><thead><tr><th>Rx ID</th><th>Patient</th><th>Doctor</th><th>Score</th><th>Violations</th><th>Status</th><th>Audited At</th></tr></thead>
+        <tbody id="comp-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="section" id="sec-auditlogs">
+      <div class="section-title">Audit Logs</div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-header-title">Audit Trail</span></div>
+        <table class="tbl"><thead><tr><th>Action</th><th>Rx ID</th><th>Score</th><th>Violations</th><th>Timestamp</th></tr></thead>
+        <tbody id="log-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="section" id="sec-queries">
+      <div class="section-title">MongoDB Queries</div>
+      <div class="query-grid" id="query-grid"><div class="loading">Loading...</div></div>
+    </div>
+    <div class="section" id="sec-triggers">
+      <div class="section-title">Triggers &amp; Stored Procedures</div>
+      <div class="trigger-box">
+        <div class="trigger-title">TRIGGER: Auto-Audit on New Prescription</div>
+        <div class="trigger-code">TRIGGER after_insert_prescription
+AFTER INSERT ON prescriptions
+FOR EACH ROW
+BEGIN
+  CALL run_prescription_audit(NEW.prescription_id);
+  IF compliance_score &lt; 75 THEN
+    UPDATE prescriptions SET status = 'flagged'
+    WHERE prescription_id = NEW.prescription_id;
+  END IF;
+  INSERT INTO audit_logs (action, prescription_id, timestamp)
+  VALUES ('AUTO_AUDIT', NEW.prescription_id, NOW());
+END;</div>
+      </div>
+      <div class="trigger-box">
+        <div class="trigger-title">STORED PROCEDURE: run_prescription_audit(rx_id)</div>
+        <div class="trigger-code">PROCEDURE run_prescription_audit(IN rx_id VARCHAR(20))
+BEGIN
+  FOR EACH item IN prescription_items WHERE prescription_id = rx_id DO
+    IF item.dosage_amount > drugs.max_dose THEN
+      INSERT INTO violations VALUES ('DOSAGE_EXCEEDED','HIGH',rx_id);
+    END IF;
+    IF item.frequency NOT IN allowed_frequencies THEN
+      INSERT INTO violations VALUES ('INVALID_FREQUENCY','MEDIUM',rx_id);
+    END IF;
+    IF item.route NOT IN allowed_routes THEN
+      INSERT INTO violations VALUES ('INVALID_ROUTE','MEDIUM',rx_id);
+    END IF;
+    IF item.duration_days > drugs.max_duration_days THEN
+      INSERT INTO violations VALUES ('EXCESSIVE_DURATION','LOW',rx_id);
+    END IF;
+  END FOR;
+  SET score = (passed_checks / total_checks) * 100;
+  INSERT INTO compliance_reports VALUES (rx_id, score, IF(score>=75,'PASS','FAIL'));
+END;</div>
+      </div>
+      <div class="trigger-box">
+        <div class="trigger-title">VIEW: Doctor Compliance Summary</div>
+        <div class="trigger-code">CREATE VIEW doctor_compliance_view AS
+SELECT doctor_name,
+  AVG(compliance_score) AS avg_score,
+  COUNT(*) AS total_prescriptions,
+  SUM(total_violations) AS total_violations,
+  CASE WHEN AVG(compliance_score) >= 90 THEN 'EXCELLENT'
+       WHEN AVG(compliance_score) >= 75 THEN 'GOOD'
+       ELSE 'NEEDS REVIEW' END AS rating
+FROM compliance_reports
+GROUP BY doctor_name
+ORDER BY avg_score DESC;</div>
+      </div>
+    </div>
+    <div class="section" id="sec-schema">
+      <div class="section-title">Database Schema / ER</div>
+      <div class="er-grid">
+        <div class="er-entity"><div class="er-entity-name">Prescriptions</div><div class="er-attrs"><div class="er-attr pk">prescription_id (PK)</div><div class="er-attr">patient_id</div><div class="er-attr">patient_name</div><div class="er-attr">doctor_name</div><div class="er-attr">issued_at</div><div class="er-attr">status</div><div class="er-attr">items[]</div></div></div>
+        <div class="er-entity"><div class="er-entity-name">Drugs (Master)</div><div class="er-attrs"><div class="er-attr pk">drug_id (PK)</div><div class="er-attr">drug_name</div><div class="er-attr">max_dose</div><div class="er-attr">unit</div><div class="er-attr">allowed_routes[]</div><div class="er-attr">allowed_frequencies[]</div><div class="er-attr">max_duration_days</div></div></div>
+        <div class="er-entity"><div class="er-entity-name">Guidelines</div><div class="er-attrs"><div class="er-attr pk">guideline_id (PK)</div><div class="er-attr">source</div><div class="er-attr">drug_id</div><div class="er-attr">rule</div><div class="er-attr">version</div></div></div>
+        <div class="er-entity"><div class="er-entity-name">Violations</div><div class="er-attrs"><div class="er-attr pk">_id (PK)</div><div class="er-attr">prescription_id</div><div class="er-attr">type</div><div class="er-attr">drug</div><div class="er-attr">detail</div><div class="er-attr">severity</div><div class="er-attr">detected_at</div></div></div>
+        <div class="er-entity"><div class="er-entity-name">Compliance Reports</div><div class="er-attrs"><div class="er-attr pk">_id (PK)</div><div class="er-attr">prescription_id</div><div class="er-attr">compliance_score</div><div class="er-attr">total_violations</div><div class="er-attr">status</div><div class="er-attr">audited_at</div></div></div>
+        <div class="er-entity"><div class="er-entity-name">Therapeutic Substitutions</div><div class="er-attrs"><div class="er-attr pk">substitution_id (PK)</div><div class="er-attr">original_drug</div><div class="er-attr">substitute_drug</div><div class="er-attr">reason</div></div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-header-title">Entity Relationships</span></div>
+        <table class="tbl"><thead><tr><th>Entity A</th><th>Relationship</th><th>Entity B</th><th>Type</th></tr></thead>
+        <tbody>
+          <tr><td>Prescription</td><td>Contains</td><td>PrescriptionItem</td><td><span class="pill pill-blue">1:N</span></td></tr>
+          <tr><td>PrescriptionItem</td><td>Refers To</td><td>Drug</td><td><span class="pill pill-teal">N:1</span></td></tr>
+          <tr><td>Prescription</td><td>Evaluated By</td><td>Compliance Report</td><td><span class="pill pill-blue">1:1</span></td></tr>
+          <tr><td>Prescription</td><td>Generates</td><td>Violation</td><td><span class="pill pill-red">1:N</span></td></tr>
+          <tr><td>Guideline</td><td>Informs</td><td>ValidationRule</td><td><span class="pill pill-green">1:N</span></td></tr>
+          <tr><td>Drug</td><td>Has Alternative In</td><td>TherapeuticSubstitution</td><td><span class="pill pill-yellow">1:N</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+function showSection(name,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  el.classList.add('active');
+  loadSection(name);
+}
+function loadSection(name){
+  if(name==='overview')loadOverview();
+  else if(name==='prescriptions')loadPrescriptions();
+  else if(name==='drugs')loadDrugs();
+  else if(name==='guidelines')loadGuidelines();
+  else if(name==='substitutions')loadSubstitutions();
+  else if(name==='violations')loadViolations();
+  else if(name==='compliance')loadCompliance();
+  else if(name==='auditlogs')loadLogs();
+  else if(name==='queries')loadQueries();
+}
+function toast(msg,err=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast show'+(err?' error':'');
+  setTimeout(()=>t.className='toast',3000);
+}
+function scoreColor(s){
+  if(s>=90)return'var(--success)';
+  if(s>=75)return'var(--accent2)';
+  if(s>=50)return'var(--warning)';
+  return'var(--danger)';
+}
+function scoreBar(s){
+  const c=scoreColor(s);
+  return '<div class="score-bar-wrap"><div class="score-bar"><div class="score-bar-fill" style="width:'+s+'%;background:'+c+'"></div></div><span class="score-num" style="color:'+c+'">'+s+'%</span></div>';
+}
+function statusPill(s){
+  if(s==='active')return'<span class="pill pill-green">active</span>';
+  if(s==='flagged')return'<span class="pill pill-red">flagged</span>';
+  if(s==='completed')return'<span class="pill pill-blue">completed</span>';
+  return'<span class="pill pill-teal">'+s+'</span>';
+}
+function severityPill(s){
+  if(s==='HIGH')return'<span class="pill pill-red">HIGH</span>';
+  if(s==='MEDIUM')return'<span class="pill pill-yellow">MEDIUM</span>';
+  return'<span class="pill pill-blue">LOW</span>';
+}
+async function runAudit(){
+  const btn=document.getElementById('audit-btn');
+  btn.textContent='Running...';
+  btn.classList.add('running');
+  try{
+    const r=await fetch('/api/audit/run',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const d=await r.json();
+    toast('Audit complete - '+d.results.length+' prescriptions processed');
+    loadOverview();
+  }catch(e){toast('Audit failed',true);}
+  btn.textContent='Run Full Audit';
+  btn.classList.remove('running');
+}
+async function loadOverview(){
+  const [rxs,stats,docScores,violType,violSev,viols]=await Promise.all([
+    fetch('/api/prescriptions').then(r=>r.json()),
+    fetch('/api/compliance/stats').then(r=>r.json()),
+    fetch('/api/doctor-scores').then(r=>r.json()),
+    fetch('/api/violations/summary').then(r=>r.json()),
+    fetch('/api/violations/by-severity').then(r=>r.json()),
+    fetch('/api/violations').then(r=>r.json()),
+  ]);
+  document.getElementById('s-total').textContent=rxs.length;
+  document.getElementById('s-avg').textContent=stats.avg_score+'%';
+  document.getElementById('s-viol').textContent=viols.length;
+  document.getElementById('s-flagged').textContent=rxs.filter(r=>r.status==='flagged').length;
+  document.getElementById('doc-count').textContent=docScores.length+' doctors';
+  document.getElementById('doctor-table').innerHTML=docScores.map(d=>{
+    const score=d.avg_score;
+    const rating=score>=90?'<span class="pill pill-green">EXCELLENT</span>':score>=75?'<span class="pill pill-blue">GOOD</span>':'<span class="pill pill-red">NEEDS REVIEW</span>';
+    return'<tr><td>'+d._id+'</td><td>'+scoreBar(score)+'</td><td>'+d.total+'</td><td>'+d.violations+'</td><td>'+rating+'</td></tr>';
+  }).join('');
+  document.getElementById('viol-type-table').innerHTML=violType.map(v=>'<tr><td><span style="font-family:var(--mono);font-size:11px">'+v._id+'</span></td><td><strong>'+v.count+'</strong></td></tr>').join('')||'<tr><td colspan="2" style="color:var(--muted);text-align:center">No violations</td></tr>';
+  document.getElementById('viol-sev-table').innerHTML=violSev.map(v=>'<tr><td>'+severityPill(v._id)+'</td><td><strong>'+v.count+'</strong></td></tr>').join('')||'<tr><td colspan="2" style="color:var(--muted);text-align:center">No violations</td></tr>';
+}
+async function loadPrescriptions(){
+  const rxs=await fetch('/api/prescriptions').then(r=>r.json());
+  document.getElementById('rx-count').textContent=rxs.length+' records';
+  document.getElementById('rx-table').innerHTML=rxs.map(rx=>'<tr><td><span style="font-family:var(--mono);color:var(--accent)">'+rx.prescription_id+'</span></td><td>'+rx.patient_name+'</td><td>'+rx.doctor_name+'</td><td>'+rx.issued_at+'</td><td>'+(rx.items?rx.items.length:0)+'</td><td>'+statusPill(rx.status)+'</td><td style="color:var(--muted);font-size:11px">'+(rx.last_audited||'Not yet')+'</td></tr>').join('');
+}
+async function loadDrugs(){
+  const drugs=await fetch('/api/drugs').then(r=>r.json());
+  document.getElementById('drug-count').textContent=drugs.length+' drugs';
+  document.getElementById('drug-table').innerHTML=drugs.map(d=>'<tr><td><span style="font-family:var(--mono);color:var(--warning)">'+d.drug_id+'</span></td><td><strong>'+d.drug_name+'</strong></td><td>'+d.max_dose+' '+d.unit+'</td><td>'+d.allowed_routes.join(', ')+'</td><td>'+d.allowed_frequencies.join(', ')+'</td><td>'+d.max_duration_days+' days</td></tr>').join('');
+}
+async function loadGuidelines(){
+  const gs=await fetch('/api/guidelines').then(r=>r.json());
+  document.getElementById('guideline-table').innerHTML=gs.map(g=>'<tr><td><span style="font-family:var(--mono);color:var(--accent2)">'+g.guideline_id+'</span></td><td><span class="pill pill-blue">'+g.source+'</span></td><td>'+g.drug_id+'</td><td style="color:var(--muted)">'+g.rule+'</td><td>v'+g.version+'</td></tr>').join('');
+}
+async function loadSubstitutions(){
+  const subs=await fetch('/api/substitutions').then(r=>r.json());
+  document.getElementById('sub-table').innerHTML=subs.map(s=>'<tr><td><span style="font-family:var(--mono)">'+s.substitution_id+'</span></td><td><strong>'+s.original_drug+'</strong></td><td style="color:var(--success)">'+s.substitute_drug+'</td><td style="color:var(--muted)">'+s.reason+'</td></tr>').join('');
+}
+async function loadViolations(){
+  const vs=await fetch('/api/violations').then(r=>r.json());
+  document.getElementById('violations-list').innerHTML=vs.length===0?'<div style="text-align:center;padding:2rem;color:var(--success)">No violations. Run an audit first.</div>':vs.map(v=>'<div class="violation-item '+v.severity+'"><div class="v-top"><span class="v-type" style="color:'+(v.severity==='HIGH'?'var(--danger)':v.severity==='MEDIUM'?'var(--warning)':'var(--muted)')+'">'+v.type+'</span>'+severityPill(v.severity)+'</div><div class="v-detail">'+v.detail+'</div><div class="v-meta">Drug: <strong>'+v.drug+'</strong> | Rx: '+v.prescription_id+' | '+v.patient_name+'</div></div>').join('');
+}
+async function loadCompliance(){
+  const reports=await fetch('/api/compliance').then(r=>r.json());
+  document.getElementById('comp-count').textContent=reports.length+' reports';
+  document.getElementById('comp-table').innerHTML=reports.map(r=>'<tr><td><span style="font-family:var(--mono);color:var(--accent)">'+r.prescription_id+'</span></td><td>'+r.patient_name+'</td><td>'+r.doctor_name+'</td><td>'+scoreBar(r.compliance_score)+'</td><td>'+r.total_violations+'</td><td>'+(r.status==='PASS'?'<span class="pill pill-green">PASS</span>':'<span class="pill pill-red">FAIL</span>')+'</td><td style="color:var(--muted);font-size:11px">'+r.audited_at+'</td></tr>').join('');
+}
+async function loadLogs(){
+  const logs=await fetch('/api/audit/logs').then(r=>r.json());
+  document.getElementById('log-table').innerHTML=logs.map(l=>'<tr><td><span class="pill pill-teal">'+l.action+'</span></td><td><span style="font-family:var(--mono)">'+l.prescription_id+'</span></td><td style="color:'+scoreColor(l.compliance_score)+'">'+l.compliance_score+'%</td><td>'+l.violations_found+'</td><td style="color:var(--muted);font-size:11px">'+l.timestamp+'</td></tr>').join('');
+}
+async function loadQueries(){
+  const qs=await fetch('/api/queries/showcase').then(r=>r.json());
+  document.getElementById('query-grid').innerHTML=qs.map(q=>'<div class="query-card"><div class="query-card-header"><span class="query-name">'+q.name+'</span><span class="query-type" style="color:'+(q.type==='AGGREGATE'?'var(--warning)':'var(--accent2)')+'">'+q.type+'</span></div><div class="query-body"><div class="query-code">'+q.query+'</div><div class="query-result">Result count: <strong>'+q.result_count+'</strong></div></div></div>').join('');
+}
+window.onload=async()=>{
+  try{await fetch('/api/audit/run',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});}catch(e){}
+  loadOverview();
+};
+</script>
+</body>
+</html>
